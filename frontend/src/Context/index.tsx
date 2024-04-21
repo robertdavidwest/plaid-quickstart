@@ -9,6 +9,7 @@ interface QuickstartState {
   isLoggedIn: boolean;
   authToken: string | null;
   userId: string | null;
+  userFirstName: string | null;
   itemId: string | null;
   isError: boolean;
   backend: boolean;
@@ -29,6 +30,7 @@ const initialState: QuickstartState = {
   isLoggedIn: false,
   authToken: null,
   userId: null,
+  userFirstName: null,
   itemId: null,
   isError: false,
   backend: true,

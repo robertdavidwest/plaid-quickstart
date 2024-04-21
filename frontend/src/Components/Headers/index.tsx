@@ -13,6 +13,7 @@ import styles from "./index.module.scss";
 
 const Header = () => {
   const {
+    userFirstName,
     isLoggedIn,
     linkToken,
     backend,
@@ -33,6 +34,9 @@ const Header = () => {
 
       {isLoggedIn ? (
         <>
+          <h4 className={styles.subtitle}>
+            Welcome back, {userFirstName}! 
+          </h4>
           {/* message if backend is not running and there is no link token */}
           {!backend ? (
             <Callout warning>
@@ -84,11 +88,11 @@ const Header = () => {
               <div className={styles.linkButton}>
                 <Link />
               </div>
-              <div className={styles.linkButton}>
-                <Logout />
-              </div>
             </>
             )}
+          <div className={styles.linkButton}>
+            <Logout />
+          </div>
         </>
       ) : (
         <>

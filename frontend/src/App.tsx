@@ -32,6 +32,37 @@ const App = () => {
     return { paymentInitiation };
   }, [dispatch]);
 
+  const me = useCallback(
+    async () => {
+      const token = window.localStorage.getItem(AUTH_TOKEN);
+      try {
+        if (token) {
+          const response = await fetch(`${API_URL}/api/auth/me`, {
+            method: "GET",
+            headers: {
+              authorization: token,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data) {
+              dispatch({ type: "SET_STATE", state: { userId: data.id } });
+              dispatch({ type: "SET_STATE", state: { userFirstName: data.firstName } });
+            }
+            return;
+          }
+        } else {
+          return;
+        }
+      } catch (err: any) {
+        return "There was an issue with your request.";
+      }
+    },
+    [dispatch]
+  )
+
   const generateLinkToken = useCallback(
     async (isPaymentInitiation) => {
       // Link tokens for 'payment_initiation' use a different creation flow in your backend.
@@ -73,12 +104,11 @@ const App = () => {
   );
 
   useEffect(() => {
-    //if (localStorage.getItem(AUTH_TOKEN)) {
-      //console.log('setting isLoggedIn to true');
-      //dispatch({ type: "SET_STATE", state: { isLoggedIn: true } });
-    //} else {
-      //dispatch({ type: "SET_STATE", state: { isLoggedIn: false } });
-    //}
+    if (localStorage.getItem(AUTH_TOKEN)) {
+      dispatch({ type: "SET_STATE", state: { isLoggedIn: true } });
+    } else {
+      dispatch({ type: "SET_STATE", state: { isLoggedIn: false } });
+    }
 
     const init = async () => {
       const { paymentInitiation } = await getInfo(); // used to determine which path to take when generating token
@@ -97,6 +127,7 @@ const App = () => {
     };
     if (isLoggedIn) {
       init();
+      me();
     }
   }, [isLoggedIn, dispatch, generateLinkToken, getInfo]);
 

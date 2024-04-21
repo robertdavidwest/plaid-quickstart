@@ -46,35 +46,6 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-export const me = async () => {
-  const token = window.localStorage.getItem(AUTH_TOKEN);
-  try {
-    if (token) {
-      const response = await fetch(`${API_URL}/api/auth/me`, {
-        method: "POST",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          headers: {
-            authorization: token,
-          },
-        }),
-      });
-      return response.json();
-    } else {
-      return {};
-    }
-  } catch (err: any) {
-    if (err.response.data) {
-      return err.response.data; //thunkAPI.rejectWithValue(err.response.data);
-    } else {
-      return "There was an issue with your request.";
-    }
-  }
-};
-
 
 export default function MuiSignin({ setOpen }: { setOpen: any }) {
   const { dispatch } = useContext(Context);
@@ -104,7 +75,6 @@ export default function MuiSignin({ setOpen }: { setOpen: any }) {
 
       // Save the link_token to be used later in the Oauth flow.
       localStorage.setItem(AUTH_TOKEN, data.token);
-
     }
   };
 
