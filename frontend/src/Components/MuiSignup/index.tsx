@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import Avatar from "@material-ui/core/Avatar";
 import Button from "@material-ui/core/Button";
 import CssBaseline from "@material-ui/core/CssBaseline";
@@ -10,8 +10,9 @@ import LockOutlinedIcon from "@material-ui/icons/LockOutlined";
 import Typography from "@material-ui/core/Typography";
 import { makeStyles } from "@material-ui/core/styles";
 import Container from "@material-ui/core/Container";
+import Context from "../../Context";
 
-import { API_URL, TOKEN } from "../../constants";
+import { API_URL, AUTH_TOKEN } from "../../constants";
 
 function MadeWithLove() {
   return (
@@ -47,7 +48,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 export const me = async () => {
-  const token = window.localStorage.getItem(TOKEN);
+  const token = window.localStorage.getItem(AUTH_TOKEN);
   try {
     if (token) {
       const response = await fetch(`${API_URL}/api/auth/me`, {
@@ -77,6 +78,7 @@ export const me = async () => {
 
 
 export default function MuiSignup({ setOpen }: { setOpen: any }) {
+  const { isLoggedIn, dispatch } = useContext(Context);
   const classes = useStyles();
 
   const handleSubmit = async (evt: any) => {
@@ -99,9 +101,16 @@ export default function MuiSignup({ setOpen }: { setOpen: any }) {
         password
       }),
     });
-    const { token } = await response.json();
-    window.localStorage.setItem(TOKEN, token);
-    setOpen(false);
+    const data = await response.json();
+
+    if (data) {
+      dispatch({ type: "SET_STATE", state: { authToken: data.token } });
+      dispatch({ type: "SET_STATE", state: { isLoggedIn: true } });
+
+      // Save the link_token to be used later in the Oauth flow.
+      localStorage.setItem(AUTH_TOKEN, data.token);
+
+    }
   };
 
   return (

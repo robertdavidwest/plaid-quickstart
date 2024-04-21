@@ -1,17 +1,16 @@
 import React, { useEffect, useContext, useCallback } from "react";
 
 import Header from "./Components/Headers";
-import Signup from "./Components/Signup";
 import Products from "./Components/ProductTypes/Products";
 import Items from "./Components/ProductTypes/Items";
 import Context from "./Context";
 
 import styles from "./App.module.scss";
 
-import { API_URL, USER_ID} from "./constants";
+import { AUTH_TOKEN, API_URL, USER_ID } from "./constants";
 
 const App = () => {
-  const { linkSuccess, isItemAccess, isPaymentInitiation, dispatch } = useContext(Context);
+  const { isLoggedIn, linkSuccess, isItemAccess, isPaymentInitiation, dispatch } = useContext(Context);
 
   const getInfo = useCallback(async () => {
     const response = await fetch(`${API_URL}/api/plaid/info`, { method: "POST" });
@@ -33,7 +32,7 @@ const App = () => {
     return { paymentInitiation };
   }, [dispatch]);
 
-  const generateToken = useCallback(
+  const generateLinkToken = useCallback(
     async (isPaymentInitiation) => {
       // Link tokens for 'payment_initiation' use a different creation flow in your backend.
       const path = isPaymentInitiation
@@ -42,11 +41,12 @@ const App = () => {
       const response = await fetch(`${API_URL}${path}`, {
         method: "POST",
         headers: {
-         'Accept': 'application/json',
-         'Content-Type': 'application/json'
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_id: USER_ID })
+          user_id: USER_ID
+        })
       });
       if (!response.ok) {
         dispatch({ type: "SET_STATE", state: { linkToken: null } });
@@ -73,6 +73,13 @@ const App = () => {
   );
 
   useEffect(() => {
+    //if (localStorage.getItem(AUTH_TOKEN)) {
+      //console.log('setting isLoggedIn to true');
+      //dispatch({ type: "SET_STATE", state: { isLoggedIn: true } });
+    //} else {
+      //dispatch({ type: "SET_STATE", state: { isLoggedIn: false } });
+    //}
+
     const init = async () => {
       const { paymentInitiation } = await getInfo(); // used to determine which path to take when generating token
       // do not generate a new token for OAuth redirect; instead
@@ -86,16 +93,17 @@ const App = () => {
         });
         return;
       }
-      generateToken(paymentInitiation);
+      generateLinkToken(paymentInitiation);
     };
-    init();
-  }, [dispatch, generateToken, getInfo]);
+    if (isLoggedIn) {
+      init();
+    }
+  }, [isLoggedIn, dispatch, generateLinkToken, getInfo]);
 
   return (
     <div className={styles.App}>
       <div className={styles.container}>
         <Header />
-        <Signup />
         {linkSuccess && (
           <>
             {isPaymentInitiation && (
