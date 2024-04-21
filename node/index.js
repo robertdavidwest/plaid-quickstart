@@ -27,7 +27,6 @@ app.use(morgan("dev"));
 app.use(bodyParser.json());
 app.use(cors());
 
-app.use("/auth", require("./auth"));
 app.use('/api', require('./api'));
 
 
