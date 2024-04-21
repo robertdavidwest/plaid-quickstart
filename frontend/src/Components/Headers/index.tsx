@@ -7,6 +7,7 @@ import Link from "../Link";
 import Context from "../../Context";
 import Signup from "../Signup";
 import Logout from "../Logout";
+import Signin from "../Signin";
 
 import styles from "./index.module.scss";
 
@@ -91,7 +92,12 @@ const Header = () => {
         </>
       ) : (
         <>
-          <Signup />
+          <div className={styles.linkButton}>
+            <Signup />
+          </div>
+          <div className={styles.linkButton}>
+            <Signin />
+          </div>
         </>
       )}
     </div>
