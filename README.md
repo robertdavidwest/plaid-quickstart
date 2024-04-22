@@ -24,8 +24,14 @@ cp .env.example .env
 Copy `.env.example` to a new file called `.env` and fill out the environment variables inside.
 
 * Server Environment Variables:
-    * `SEED` - If `SEED=true` then `scripts/seed.js` will run on app startup. Do not set this variable in production
-    * `DATABASE_URL` only needed in production. In Local dev will default to `DATABASE_URL=postgres://localhost:5432/spirit_cat`
+    * `DATABASE_URL` only needed in production. In Local dev will default to: `DATABASE_URL=postgres://localhost:5432/spirit_cat`
+    * `JWT` - A secret key for JWT token generation for authentication
+
+* Local Dev only Environment Variables:
+    * `SEED` - If `SEED=true` then `node/scripts/seed.js` will run on app startup. 
+    * `SAMPLE_SANDBOX_ACCESS_TOKEN` - A Plaid Sandbox Access token (You can generate this by using the app in local dev)
+    * `SAMPLE_SANDBOX_ITEM_ID` - A Plaid Sandbox Access token (You can generate this by using the app in local dev)
+    > Do not set any of these variables in production!
 
 * Plaid Environment variables:
     * At minimum `PLAID_CLIENT_ID` and `PLAID_SECRET` must be filled out. Get your Client ID and secrets from

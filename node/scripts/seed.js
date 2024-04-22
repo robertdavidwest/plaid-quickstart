@@ -1,9 +1,10 @@
 "use strict";
 
+require('dotenv').config();
 const {
   db,
-  models: { User, Transaction },
-} = require("../node/db");
+  models: { User, AccessToken, Transaction },
+} = require("../db");
 
 /**
  * seed - this function clears the database, updates tables to
@@ -14,7 +15,14 @@ async function seed() {
   console.log("db synced!");
 
   await User.create({ firstName: "robert", lastName: "west", email: "robert@robert.com", password: "123" });
-  await Transaction.create({ userId: 1, amount: 100 }); 
+
+  await AccessToken.create({
+    userId: 1,
+    access_token: process.env.SAMPLE_SANDBOX_ACCESS_TOKEN,
+    item_id: process.env.SAMPLE_SANDBOX_ITEM_ID
+  });
+
+  //await Transaction.create({ userId: 1, amount: 100 }); 
   console.log("seeded database");
 }
 

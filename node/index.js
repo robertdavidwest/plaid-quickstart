@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 const { db } = require('./db')
-const seed = require('../script/seed');
+const seed = require('./scripts/seed');
 
 const APP_PORT = process.env.APP_PORT || 8000;
 
