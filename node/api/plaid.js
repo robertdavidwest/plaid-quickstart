@@ -1,12 +1,13 @@
 'use strict';
 
 const router = require("express").Router();
-const { Configuration, PlaidApi, Products, PlaidEnvironments} = require('plaid');
+const { Configuration, PlaidApi, Products, PlaidEnvironments } = require('plaid');
 const moment = require('moment');
 const util = require('util');
 const { v4: uuidv4 } = require('uuid');
 
 const { models: { AccessToken, Item } } = require("../db");
+const { requireToken, routeClosed } = require("../gatekeeper");
 
 module.exports = router;
 //router.use("/users", require("./users"));
@@ -73,20 +74,18 @@ const configuration = new Configuration({
 const client = new PlaidApi(configuration);
 
 
-router.post('/info', function (request, response, next) {
+router.post('/info', requireToken, function(request, response, next) {
   response.json({
-    item_id: ITEM_ID,
-    access_token: "Do not send Access token to front end",
     products: PLAID_PRODUCTS,
   });
 });
 
 // Create a link token with configs which we can then use to initialize Plaid Link client-side.
 // See https://plaid.com/docs/#create-link-token
-router.post('/create_link_token', function (request, response, next) {
-  const { user_id } = request.body;
+router.get('/create_link_token', requireToken, function(request, response, next) {
+  const { user_id } = request.user.id;
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const configs = {
         user: {
           // This should correspond to a unique id for the current user.
@@ -118,10 +117,10 @@ router.post('/create_link_token', function (request, response, next) {
 // - https://plaid.com/docs/payment-initiation/
 // - https://plaid.com/docs/#payment-initiation-create-link-token-request
 router.post(
-  '/create_link_token_for_payment',
-  function (request, response, next) {
+  '/create_link_token_for_payment', routeClosed,
+  function(request, response, next) {
     Promise.resolve()
-      .then(async function () {
+      .then(async function() {
         const createRecipientResponse =
           await client.paymentInitiationRecipientCreate({
             name: 'Harry Potter',
@@ -183,10 +182,10 @@ router.post(
 // Exchange token flow - exchange a Link public_token for
 // an API access_token
 // https://plaid.com/docs/#exchange-token-flow
-router.post('/set_access_token', function (request, response, next) {
+router.post('/set_access_token', function(request, response, next) {
   const { user_id, public_token } = request.body;
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const tokenResponse = await client.itemPublicTokenExchange({
         public_token: public_token,
       });
@@ -215,9 +214,9 @@ router.post('/set_access_token', function (request, response, next) {
 
 // Retrieve ACH or ETF Auth data for an Item's accounts
 // https://plaid.com/docs/#auth
-router.get('/auth', function (request, response, next) {
+router.get('/auth', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const authResponse = await client.authGet({
         access_token: ACCESS_TOKEN,
       });
@@ -229,9 +228,9 @@ router.get('/auth', function (request, response, next) {
 
 // Retrieve Transactions for an Item
 // https://plaid.com/docs/#transactions
-router.get('/transactions', function (request, response, next) {
+router.get('/transactions', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       // Set cursor to empty to receive all historical updates
       let cursor = null;
 
@@ -262,16 +261,16 @@ router.get('/transactions', function (request, response, next) {
       const compareTxnsByDateAscending = (a, b) => (a.date > b.date) - (a.date < b.date);
       // Return the 8 most recent transactions
       const recently_added = [...added].sort(compareTxnsByDateAscending).slice(-8);
-      response.json({latest_transactions: recently_added});
+      response.json({ latest_transactions: recently_added });
     })
     .catch(next);
 });
 
 // Retrieve Investment Transactions for an Item
 // https://plaid.com/docs/#investments
-router.get('/investments_transactions', function (request, response, next) {
+router.get('/investments_transactions', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const startDate = moment().subtract(30, 'days').format('YYYY-MM-DD');
       const endDate = moment().format('YYYY-MM-DD');
       const configs = {
@@ -292,9 +291,9 @@ router.get('/investments_transactions', function (request, response, next) {
 
 // Retrieve Identity for an Item
 // https://plaid.com/docs/#identity
-router.get('/identity', function (request, response, next) {
+router.get('/identity', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const identityResponse = await client.identityGet({
         access_token: ACCESS_TOKEN,
       });
@@ -306,9 +305,9 @@ router.get('/identity', function (request, response, next) {
 
 // Retrieve real-time Balances for each of an Item's accounts
 // https://plaid.com/docs/#balance
-router.get('/balance', function (request, response, next) {
+router.get('/balance', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const balanceResponse = await client.accountsBalanceGet({
         access_token: ACCESS_TOKEN,
       });
@@ -320,9 +319,9 @@ router.get('/balance', function (request, response, next) {
 
 // Retrieve Holdings for an Item
 // https://plaid.com/docs/#investments
-router.get('/holdings', function (request, response, next) {
+router.get('/holdings', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const holdingsResponse = await client.investmentsHoldingsGet({
         access_token: ACCESS_TOKEN,
       });
@@ -334,9 +333,9 @@ router.get('/holdings', function (request, response, next) {
 
 // Retrieve Liabilities for an Item
 // https://plaid.com/docs/#liabilities
-router.get('/liabilities', function (request, response, next) {
+router.get('/liabilities', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const liabilitiesResponse = await client.liabilitiesGet({
         access_token: ACCESS_TOKEN,
       });
@@ -348,9 +347,9 @@ router.get('/liabilities', function (request, response, next) {
 
 // Retrieve information about an Item
 // https://plaid.com/docs/#retrieve-item
-router.get('/item', function (request, response, next) {
+router.get('/item', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       // Pull the Item - this includes information about available products,
       // billed products, webhook information, and more.
       const itemResponse = await client.itemGet({
@@ -373,9 +372,9 @@ router.get('/item', function (request, response, next) {
 
 // Retrieve an Item's accounts
 // https://plaid.com/docs/#accounts
-router.get('/accounts', function (request, response, next) {
+router.get('/accounts', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const accountsResponse = await client.accountsGet({
         access_token: ACCESS_TOKEN,
       });
@@ -389,9 +388,9 @@ router.get('/accounts', function (request, response, next) {
 // Asset Report can contain up to 100 items, but for simplicity we're only
 // including one Item here.
 // https://plaid.com/docs/#assets
-router.get('/assets', function (request, response, next) {
+router.get('/assets', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       // You can specify up to two years of transaction history for an Asset
       // Report.
       const daysRequested = 10;
@@ -444,9 +443,9 @@ router.get('/assets', function (request, response, next) {
 
 // This functionality is only relevant for the UK/EU Payment Initiation product.
 // Retrieve Payment for a specified Payment ID
-router.get('/payment', function (request, response, next) {
+router.get('/payment', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const paymentGetResponse = await client.paymentInitiationPaymentGet({
         payment_id: PAYMENT_ID,
       });
@@ -458,19 +457,19 @@ router.get('/payment', function (request, response, next) {
 
 // This endpoint is still supported but is no longer recommended
 // For Income best practices, see https://github.com/plaid/income-sample instead
-router.get('/income/verification/paystubs', function (request, response, next) {
+router.get('/income/verification/paystubs', function(request, response, next) {
   Promise.resolve()
-  .then(async function () {
-    const paystubsGetResponse = await client.incomeVerificationPaystubsGet({
-      access_token: ACCESS_TOKEN
-    });
-    prettyPrintResponse(paystubsGetResponse);
-    response.json({ error: null, paystubs: paystubsGetResponse.data})
-  })
-  .catch(next);
+    .then(async function() {
+      const paystubsGetResponse = await client.incomeVerificationPaystubsGet({
+        access_token: ACCESS_TOKEN
+      });
+      prettyPrintResponse(paystubsGetResponse);
+      response.json({ error: null, paystubs: paystubsGetResponse.data })
+    })
+    .catch(next);
 })
 
-router.use('/', function (error, request, response, next) {
+router.use('/', function(error, request, response, next) {
   prettyPrintResponse(error.response);
   response.json(formatError(error.response));
 });
@@ -520,9 +519,9 @@ const formatError = (error) => {
   };
 };
 
-router.get('/transfer_authorize', function (request, response, next) {
+router.get('/transfer_authorize', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const accountsResponse = await client.accountsGet({
         access_token: ACCESS_TOKEN,
       });
@@ -554,9 +553,9 @@ router.get('/transfer_authorize', function (request, response, next) {
     .catch(next);
 });
 
-router.get('/transfer_create', function (request, response, next) {
+router.get('/transfer_create', function(request, response, next) {
   Promise.resolve()
-    .then(async function () {
+    .then(async function() {
       const transferCreateResponse = await client.transferCreate({
         access_token: ACCESS_TOKEN,
         account_id: ACCOUNT_ID,

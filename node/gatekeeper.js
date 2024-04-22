@@ -3,6 +3,11 @@ const {
 } = require("./db");
 
 
+const routeClosed = async (req, res, next) => {
+  return res.status(403).send("Route Closed");
+};
+
+
 const requireToken = async (req, res, next) => {
   const token = req.headers.authorization;
   req.user = await User.findByToken(token);

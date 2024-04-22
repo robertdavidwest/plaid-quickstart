@@ -7,7 +7,7 @@ import Context from "./Context";
 
 import styles from "./App.module.scss";
 
-import { AUTH_TOKEN, API_URL, USER_ID } from "./constants";
+import { AUTH_TOKEN, API_URL } from "./constants";
 
 const App = () => {
   const { isLoggedIn, linkSuccess, isItemAccess, isPaymentInitiation, dispatch } = useContext(Context);
@@ -65,19 +65,21 @@ const App = () => {
 
   const generateLinkToken = useCallback(
     async (isPaymentInitiation) => {
+      const token = window.localStorage.getItem(AUTH_TOKEN);
+      if (!token) {
+        return;
+      }
       // Link tokens for 'payment_initiation' use a different creation flow in your backend.
       const path = isPaymentInitiation
         ? "/api/plaid/create_link_token_for_payment"
         : "/api/plaid/create_link_token";
       const response = await fetch(`${API_URL}${path}`, {
-        method: "POST",
+        method: "GET",
         headers: {
+          authorization: token,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: USER_ID
-        })
+        }
       });
       if (!response.ok) {
         dispatch({ type: "SET_STATE", state: { linkToken: null } });
@@ -129,7 +131,7 @@ const App = () => {
       init();
       me();
     }
-  }, [isLoggedIn, dispatch, generateLinkToken, getInfo]);
+  }, [isLoggedIn, dispatch, generateLinkToken, getInfo, me]);
 
   return (
     <div className={styles.App}>
