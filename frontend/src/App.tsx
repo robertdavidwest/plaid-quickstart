@@ -12,26 +12,6 @@ import { AUTH_TOKEN, API_URL } from "./constants";
 const App = () => {
   const { isLoggedIn, linkSuccess, isItemAccess, isPaymentInitiation, dispatch } = useContext(Context);
 
-  const getInfo = useCallback(async () => {
-    const response = await fetch(`${API_URL}/api/plaid/info`, { method: "POST" });
-    if (!response.ok) {
-      dispatch({ type: "SET_STATE", state: { backend: false } });
-      return { paymentInitiation: false };
-    }
-    const data = await response.json();
-    const paymentInitiation: boolean = data.products.includes(
-      "payment_initiation"
-    );
-    dispatch({
-      type: "SET_STATE",
-      state: {
-        products: data.products,
-        isPaymentInitiation: paymentInitiation,
-      },
-    });
-    return { paymentInitiation };
-  }, [dispatch]);
-
   const me = useCallback(
     async () => {
       const token = window.localStorage.getItem(AUTH_TOKEN);
@@ -64,15 +44,13 @@ const App = () => {
   )
 
   const generateLinkToken = useCallback(
-    async (isPaymentInitiation) => {
+    async () => {
       const token = window.localStorage.getItem(AUTH_TOKEN);
       if (!token) {
         return;
       }
       // Link tokens for 'payment_initiation' use a different creation flow in your backend.
-      const path = isPaymentInitiation
-        ? "/api/plaid/create_link_token_for_payment"
-        : "/api/plaid/create_link_token";
+      const path = "/api/plaid/create_link_token";
       const response = await fetch(`${API_URL}${path}`, {
         method: "GET",
         headers: {
@@ -113,7 +91,6 @@ const App = () => {
     }
 
     const init = async () => {
-      const { paymentInitiation } = await getInfo(); // used to determine which path to take when generating token
       // do not generate a new token for OAuth redirect; instead
       // setLinkToken from localStorage
       if (window.location.href.includes("?oauth_state_id=")) {
@@ -125,13 +102,13 @@ const App = () => {
         });
         return;
       }
-      generateLinkToken(paymentInitiation);
+      generateLinkToken();
     };
     if (isLoggedIn) {
       init();
       me();
     }
-  }, [isLoggedIn, dispatch, generateLinkToken, getInfo, me]);
+  }, [isLoggedIn, dispatch, generateLinkToken, me]);
 
   return (
     <div className={styles.App}>

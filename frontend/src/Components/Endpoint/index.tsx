@@ -5,7 +5,7 @@ import Note from "plaid-threads/Note";
 import Table from "../Table";
 import Error from "../Error";
 import { DataItem, Categories, ErrorDataItem, Data } from "../../dataUtilities";
-import { API_URL } from "../../constants";
+import { API_URL, AUTH_TOKEN } from "../../constants";
 
 import styles from "./index.module.scss";
 
@@ -26,8 +26,20 @@ const Endpoint = (props: Props) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const getData = async () => {
+    const token = window.localStorage.getItem(AUTH_TOKEN);
+    if (!token) {
+      return;
+    }
     setIsLoading(true);
-    const response = await fetch(`${API_URL}/api/plaid/${props.endpoint}`, { method: "GET" });
+
+    const headers: HeadersInit = new Headers();
+    headers.set('Content-Type', 'application/json');
+    headers.set('Accept', 'application/json');
+    headers.set('authorization', token);
+
+    const response = await fetch(`${API_URL}/api/plaid/${props.endpoint}`, {
+      method: "GET", headers: headers
+    });
     const data = await response.json();
     if (data.error != null) {
       setError(data.error);

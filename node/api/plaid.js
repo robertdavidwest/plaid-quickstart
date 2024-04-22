@@ -7,10 +7,9 @@ const util = require('util');
 const { v4: uuidv4 } = require('uuid');
 
 const { models: { AccessToken, Item } } = require("../db");
-const { requireToken, routeClosed } = require("../gatekeeper");
+const { routeClosed, requireToken } = require("../gatekeeper");
 
 module.exports = router;
-//router.use("/users", require("./users"));
 
 const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID;
 const PLAID_SECRET = process.env.PLAID_SECRET;
@@ -45,7 +44,6 @@ const PLAID_ANDROID_PACKAGE_NAME = process.env.PLAID_ANDROID_PACKAGE_NAME || '';
 // We store the access_token in memory - in production, store it in a secure
 // persistent data store
 let ACCESS_TOKEN = null;
-let ITEM_ID = null;
 let ACCOUNT_ID = null;
 // The payment_id is only relevant for the UK/EU Payment Initiation product.
 // We store the payment_id in memory - in production, store it in a secure
@@ -111,85 +109,17 @@ router.get('/create_link_token', requireToken, function(request, response, next)
     .catch(next);
 });
 
-// Create a link token with configs which we can then use to initialize Plaid Link client-side
-// for a 'payment-initiation' flow.
-// See:
-// - https://plaid.com/docs/payment-initiation/
-// - https://plaid.com/docs/#payment-initiation-create-link-token-request
-router.post(
-  '/create_link_token_for_payment', routeClosed,
-  function(request, response, next) {
-    Promise.resolve()
-      .then(async function() {
-        const createRecipientResponse =
-          await client.paymentInitiationRecipientCreate({
-            name: 'Harry Potter',
-            iban: 'GB33BUKB20201555555555',
-            address: {
-              street: ['4 Privet Drive'],
-              city: 'Little Whinging',
-              postal_code: '11111',
-              country: 'GB',
-            },
-          });
-        const recipientId = createRecipientResponse.data.recipient_id;
-        prettyPrintResponse(createRecipientResponse);
-
-        const createPaymentResponse =
-          await client.paymentInitiationPaymentCreate({
-            recipient_id: recipientId,
-            reference: 'paymentRef',
-            amount: {
-              value: 1.23,
-              currency: 'GBP',
-            },
-          });
-        prettyPrintResponse(createPaymentResponse);
-        const paymentId = createPaymentResponse.data.payment_id;
-
-        // We store the payment_id in memory for demo purposes - in production, store it in a secure
-        // persistent data store along with the Payment metadata, such as userId.
-        PAYMENT_ID = paymentId;
-
-        const configs = {
-          client_name: 'Plaid Quickstart',
-          user: {
-            // This should correspond to a unique id for the current user.
-            // Typically, this will be a user ID number from your routerlication.
-            // Personally identifiable information, such as an email address or phone number, should not be used here.
-            client_user_id: uuidv4(),
-          },
-          // Institutions from all listed countries will be shown.
-          country_codes: PLAID_COUNTRY_CODES,
-          language: 'en',
-          // The 'payment_initiation' product has to be the only element in the 'products' list.
-          products: [Products.PaymentInitiation],
-          payment_initiation: {
-            payment_id: paymentId,
-          },
-        };
-        if (PLAID_REDIRECT_URI !== '') {
-          configs.redirect_uri = PLAID_REDIRECT_URI;
-        }
-        const createTokenResponse = await client.linkTokenCreate(configs);
-        prettyPrintResponse(createTokenResponse);
-        response.json(createTokenResponse.data);
-      })
-      .catch(next);
-  },
-);
-
 // Exchange token flow - exchange a Link public_token for
 // an API access_token
 // https://plaid.com/docs/#exchange-token-flow
-router.post('/set_access_token', function(request, response, next) {
-  const { user_id, public_token } = request.body;
+router.post('/set_access_token', requireToken, function(request, response, next) {
+  const user_id = request.user.id;
+  const { public_token } = request.body;
   Promise.resolve()
     .then(async function() {
       const tokenResponse = await client.itemPublicTokenExchange({
         public_token: public_token,
       });
-      prettyPrintResponse(tokenResponse);
       const access_token = tokenResponse.data.access_token;
       const item_id = tokenResponse.data.item_id;
 
@@ -214,7 +144,7 @@ router.post('/set_access_token', function(request, response, next) {
 
 // Retrieve ACH or ETF Auth data for an Item's accounts
 // https://plaid.com/docs/#auth
-router.get('/auth', function(request, response, next) {
+router.get('/auth', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const authResponse = await client.authGet({
@@ -228,9 +158,20 @@ router.get('/auth', function(request, response, next) {
 
 // Retrieve Transactions for an Item
 // https://plaid.com/docs/#transactions
-router.get('/transactions', function(request, response, next) {
+router.get('/transactions', requireToken, function(request, response, next) {
+  // Just use first access token for now
+  const { id } = request.user;
+
   Promise.resolve()
     .then(async function() {
+      let token;
+      const access_token = await AccessToken.findOne({ where: { userId: id } });
+      if (access_token) {
+        token = access_token.access_token;
+      } else {
+        throw new Error("No access token found");
+      }
+
       // Set cursor to empty to receive all historical updates
       let cursor = null;
 
@@ -243,7 +184,7 @@ router.get('/transactions', function(request, response, next) {
       // Iterate through each page of new transaction updates for item
       while (hasMore) {
         const request = {
-          access_token: ACCESS_TOKEN,
+          access_token: token,
           cursor: cursor,
         };
         const response = await client.transactionsSync(request)
@@ -268,7 +209,7 @@ router.get('/transactions', function(request, response, next) {
 
 // Retrieve Investment Transactions for an Item
 // https://plaid.com/docs/#investments
-router.get('/investments_transactions', function(request, response, next) {
+router.get('/investments_transactions', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const startDate = moment().subtract(30, 'days').format('YYYY-MM-DD');
@@ -291,7 +232,7 @@ router.get('/investments_transactions', function(request, response, next) {
 
 // Retrieve Identity for an Item
 // https://plaid.com/docs/#identity
-router.get('/identity', function(request, response, next) {
+router.get('/identity', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const identityResponse = await client.identityGet({
@@ -305,7 +246,7 @@ router.get('/identity', function(request, response, next) {
 
 // Retrieve real-time Balances for each of an Item's accounts
 // https://plaid.com/docs/#balance
-router.get('/balance', function(request, response, next) {
+router.get('/balance', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const balanceResponse = await client.accountsBalanceGet({
@@ -319,7 +260,7 @@ router.get('/balance', function(request, response, next) {
 
 // Retrieve Holdings for an Item
 // https://plaid.com/docs/#investments
-router.get('/holdings', function(request, response, next) {
+router.get('/holdings', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const holdingsResponse = await client.investmentsHoldingsGet({
@@ -333,7 +274,7 @@ router.get('/holdings', function(request, response, next) {
 
 // Retrieve Liabilities for an Item
 // https://plaid.com/docs/#liabilities
-router.get('/liabilities', function(request, response, next) {
+router.get('/liabilities', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const liabilitiesResponse = await client.liabilitiesGet({
@@ -347,7 +288,7 @@ router.get('/liabilities', function(request, response, next) {
 
 // Retrieve information about an Item
 // https://plaid.com/docs/#retrieve-item
-router.get('/item', function(request, response, next) {
+router.get('/item', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       // Pull the Item - this includes information about available products,
@@ -372,7 +313,7 @@ router.get('/item', function(request, response, next) {
 
 // Retrieve an Item's accounts
 // https://plaid.com/docs/#accounts
-router.get('/accounts', function(request, response, next) {
+router.get('/accounts', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const accountsResponse = await client.accountsGet({
@@ -388,7 +329,7 @@ router.get('/accounts', function(request, response, next) {
 // Asset Report can contain up to 100 items, but for simplicity we're only
 // including one Item here.
 // https://plaid.com/docs/#assets
-router.get('/assets', function(request, response, next) {
+router.get('/assets', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       // You can specify up to two years of transaction history for an Asset
@@ -443,7 +384,7 @@ router.get('/assets', function(request, response, next) {
 
 // This functionality is only relevant for the UK/EU Payment Initiation product.
 // Retrieve Payment for a specified Payment ID
-router.get('/payment', function(request, response, next) {
+router.get('/payment', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const paymentGetResponse = await client.paymentInitiationPaymentGet({
@@ -457,7 +398,7 @@ router.get('/payment', function(request, response, next) {
 
 // This endpoint is still supported but is no longer recommended
 // For Income best practices, see https://github.com/plaid/income-sample instead
-router.get('/income/verification/paystubs', function(request, response, next) {
+router.get('/income/verification/paystubs', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const paystubsGetResponse = await client.incomeVerificationPaystubsGet({
@@ -519,7 +460,7 @@ const formatError = (error) => {
   };
 };
 
-router.get('/transfer_authorize', function(request, response, next) {
+router.get('/transfer_authorize', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const accountsResponse = await client.accountsGet({
@@ -553,7 +494,7 @@ router.get('/transfer_authorize', function(request, response, next) {
     .catch(next);
 });
 
-router.get('/transfer_create', function(request, response, next) {
+router.get('/transfer_create', routeClosed, function(request, response, next) {
   Promise.resolve()
     .then(async function() {
       const transferCreateResponse = await client.transferCreate({

@@ -13,7 +13,7 @@ async function seed() {
   await db.sync({ force: true }); // clears db and matches models to tables
   console.log("db synced!");
 
-  await User.create({ email: "robert@robert.com", password: "123" });
+  await User.create({ firstName: "robert", lastName: "west", email: "robert@robert.com", password: "123" });
   await Transaction.create({ userId: 1, amount: 100 }); 
   console.log("seeded database");
 }

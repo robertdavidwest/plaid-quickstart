@@ -67,6 +67,7 @@ const isAdminOrSelf = (req, res, next) => {
 
 module.exports = {
   requireToken,
+  routeClosed,
   isSelf,
   //isYourSection,
   isAdmin,
