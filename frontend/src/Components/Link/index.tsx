@@ -2,7 +2,7 @@ import React, { useEffect, useContext } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import Button from "plaid-threads/Button";
 
-import { API_URL } from "../../constants";
+import { API_URL, AUTH_TOKEN } from "../../constants";
 import Context from "../../Context";
 import { Products } from "plaid";
 
@@ -12,14 +12,22 @@ const Link = () => {
 
   const onSuccess = React.useCallback(
     (public_token: string) => {
+      const token = window.localStorage.getItem(AUTH_TOKEN);
+      if (!token) {
+        return;
+      }
       // If the access_token is needed, send public_token to server
       const exchangePublicTokenForAccessToken = async () => {
-        const response = await fetch(`${API_URL}/api/set_access_token`, {
+        const response = await fetch(`${API_URL}/api/plaid/set_access_token`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            authorization: token,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           },
-          body: `public_token=${public_token}`,
+          body: JSON.stringify({
+            public_token: public_token,
+          }),
         });
         if (!response.ok) {
           dispatch({
@@ -37,7 +45,6 @@ const Link = () => {
           type: "SET_STATE",
           state: {
             itemId: data.item_id,
-            accessToken: "This should not be passed to the front end",
             isItemAccess: true,
           },
         });

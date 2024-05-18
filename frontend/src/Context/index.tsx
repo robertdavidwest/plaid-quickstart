@@ -6,6 +6,10 @@ interface QuickstartState {
   isPaymentInitiation: boolean;
   linkToken: string | null;
   accessToken: string | null;
+  isLoggedIn: boolean;
+  authToken: string | null;
+  userId: string | null;
+  userFirstName: string | null;
   itemId: string | null;
   isError: boolean;
   backend: boolean;
@@ -23,6 +27,10 @@ const initialState: QuickstartState = {
   isPaymentInitiation: false,
   linkToken: "", // Don't set to null or error message will show up briefly when site loads
   accessToken: null,
+  isLoggedIn: false,
+  authToken: null,
+  userId: null,
+  userFirstName: null,
   itemId: null,
   isError: false,
   backend: true,
