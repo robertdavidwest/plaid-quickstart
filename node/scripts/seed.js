@@ -15,12 +15,14 @@ async function seed() {
   console.log("db synced!");
 
   await User.create({ firstName: "robert", lastName: "west", email: "robert@robert.com", password: "123" });
-
-  await AccessToken.create({
-    userId: 1,
-    access_token: process.env.SAMPLE_SANDBOX_ACCESS_TOKEN,
-    item_id: process.env.SAMPLE_SANDBOX_ITEM_ID
-  });
+        
+  if (process.env.SAMPLE_SANDBOX_ACCESS_TOKEN !== undefined) {
+    await AccessToken.create({
+      userId: 1,
+      access_token: process.env.SAMPLE_SANDBOX_ACCESS_TOKEN,
+      item_id: process.env.SAMPLE_SANDBOX_ITEM_ID
+    });
+  }
 
   //await Transaction.create({ userId: 1, amount: 100 }); 
   console.log("seeded database");

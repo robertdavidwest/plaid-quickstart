@@ -1,23 +1,27 @@
 const Sequelize = require("sequelize");
 const db = require("../db");
 
-const Transaction = db.define("transaction", {
-  amount: {
+const Balance = db.define("balance", {
+  available: {
     type: Sequelize.DECIMAL,
     allowNull: false
   },
-  date: {
-    type: Sequelize.DATE,
+  current: {
+    type: Sequelize.DECIMAL,
     allowNull: false
   },
-  name: {
+  iso_currency_code: {
     type: Sequelize.STRING,
     allowNull: false
   },
-  merchant_name: {
+  limit: {
+    type: Sequelize.DECIMAL,
+    allowNull: false
+  },
+  unofficial_currency_code: {
     type: Sequelize.STRING,
     allowNull: false
   }
 });
 
-module.exports = Transaction;
+module.exports = Balance;

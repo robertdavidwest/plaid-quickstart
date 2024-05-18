@@ -1,7 +1,7 @@
 const Sequelize = require("sequelize");
 const db = require("../db");
 
-const Bank = db.define("bank", {
+const Institution = db.define("institution", {
   name: {
     type: Sequelize.STRING,
     unique: true,
@@ -12,4 +12,4 @@ const Bank = db.define("bank", {
   }
 });
 
-module.exports = Bank;
+module.exports = Institution;
