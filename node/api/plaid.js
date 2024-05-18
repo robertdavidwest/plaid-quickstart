@@ -123,12 +123,12 @@ router.post('/set_access_token', requireToken, function(request, response, next)
       const access_token = tokenResponse.data.access_token;
       const item_id = tokenResponse.data.item_id;
 
-      const access_token_tbl = AccessToken.create({
+      const access_token_tbl = await AccessToken.create({
         access_token,
         userId: user_id
       });
 
-      Item.create({
+      await Item.create({
         accessTokenId: access_token_tbl.id,
         item_id: item_id,
       });
