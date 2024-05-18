@@ -3,7 +3,7 @@
 require('dotenv').config();
 const {
   db,
-  models: { User, AccessToken, Transaction },
+  models: { User, AccessToken, Item },
 } = require("../db");
 
 /**
@@ -14,14 +14,25 @@ async function seed() {
   await db.sync({ force: true }); // clears db and matches models to tables
   console.log("db synced!");
 
-  await User.create({ firstName: "robert", lastName: "west", email: "robert@robert.com", password: "123" });
-        
-  if (process.env.SAMPLE_SANDBOX_ACCESS_TOKEN !== undefined) {
-    await AccessToken.create({
-      userId: 1,
+  const user = await User.create({ firstName: "robert",
+                      lastName: "west",
+                      email: "robert@robert.com",
+                      password: "123" });
+
+  if (
+      (process.env.SAMPLE_SANDBOX_ACCESS_TOKEN !== undefined)
+      && (process.env.SAMPLE_SANDBOX_ITEM_ID !== undefined)
+  )
+    {
+    const access_token = await AccessToken.create({
+      userId: user.id,
       access_token: process.env.SAMPLE_SANDBOX_ACCESS_TOKEN,
-      item_id: process.env.SAMPLE_SANDBOX_ITEM_ID
     });
+
+    await Item.create({
+      accessTokenId: access_token.id,
+      item_id: process.env.SAMPLE_SANDBOX_ITEM_ID
+    })
   }
 
   //await Transaction.create({ userId: 1, amount: 100 }); 

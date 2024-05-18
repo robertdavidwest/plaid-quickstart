@@ -6,12 +6,7 @@ const AccessToken = db.define("access_token", {
     type: Sequelize.STRING,
     unique: true,
     allowNull: false,
-  },
-  item_id: {
-    type: Sequelize.STRING,
-    unique: true,
-    allowNull: false,
-  },
+  }
 });
 
 module.exports = AccessToken;

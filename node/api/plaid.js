@@ -125,7 +125,6 @@ router.post('/set_access_token', requireToken, function(request, response, next)
 
       const access_token_tbl = AccessToken.create({
         access_token,
-        item_id,
         userId: user_id
       });
 
