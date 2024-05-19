@@ -52,3 +52,6 @@ docker-compose.local*.yml
 
 #vscode
 .vscode
+
+*/__pycache__/*
+*.pyc

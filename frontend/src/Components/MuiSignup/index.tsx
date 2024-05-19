@@ -58,6 +58,7 @@ export default function MuiSignup({ setOpen }: { setOpen: any }) {
     const lastName = evt.target.lastName.value;
     const email = evt.target.email.value;
     const password = evt.target.password.value;
+    const telegramHandle = evt.target.telegramUsername.value;
 
     const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: "POST",
@@ -68,6 +69,7 @@ export default function MuiSignup({ setOpen }: { setOpen: any }) {
       body: JSON.stringify({
         firstName,
         lastName,
+        telegramHandle,
         email,
         password
       }),
@@ -117,6 +119,17 @@ export default function MuiSignup({ setOpen }: { setOpen: any }) {
                 label="Last Name"
                 name="lastName"
                 autoComplete="lname"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                variant="outlined"
+                required
+                fullWidth
+                id="telegramUsername"
+                label="Telegram Username"
+                name="telegramUsername"
+                autoComplete="Telegram Username"
               />
             </Grid>
             <Grid item xs={12}>

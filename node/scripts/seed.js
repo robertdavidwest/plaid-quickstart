@@ -14,16 +14,20 @@ async function seed() {
   await db.sync({ force: true }); // clears db and matches models to tables
   console.log("db synced!");
 
-  const user = await User.create({ firstName: "robert",
-                      lastName: "west",
-                      email: "robert@robert.com",
-                      password: "123" });
+  const telegramHandle = process.env.EXAMPLE_TELEGRAM_HANDLE === undefined ? "example" : process.env.EXAMPLE_TELEGRAM_HANDLE;
+
+  const user = await User.create({
+    firstName: "robert",
+    lastName: "west",
+    email: "robert@robert.com",
+    password: "123",
+    telegramHandle
+  });
 
   if (
-      (process.env.SAMPLE_SANDBOX_ACCESS_TOKEN !== undefined)
-      && (process.env.SAMPLE_SANDBOX_ITEM_ID !== undefined)
-  )
-    {
+    (process.env.SAMPLE_SANDBOX_ACCESS_TOKEN !== undefined)
+    && (process.env.SAMPLE_SANDBOX_ITEM_ID !== undefined)
+  ) {
     const access_token = await AccessToken.create({
       userId: user.id,
       access_token: process.env.SAMPLE_SANDBOX_ACCESS_TOKEN,

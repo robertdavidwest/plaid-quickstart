@@ -19,24 +19,60 @@ const Header = () => {
     backend,
     linkTokenError,
   } = useContext(Context);
+  const welcome_msg = userFirstName ? `Welcome back, ${userFirstName}!` : "Welcome!";
 
   return (
     <div className={styles.grid}>
       <h3 className={styles.title}>Spirit Cat</h3>
       <h4 className={styles.subtitle}>
-        All of your transactions in one place
+        No Thrills. Simple Text Alerts via Telegram.
       </h4>
-      <p className={styles.introPar}>
-        With Spirit Cat, you can easily categorize and customize your
-        spending habits. Know exactly how much you've spent and what on
-        instantly. Effortlessly compare your spend month over month.
-      </p>
-
+      {!isLoggedIn ? (
+        <p className={styles.introPar}>
+          In our modern world in can be so difficult to keep track of our
+          spending, or even, to know how much money we even have in a given 
+          moment. 
+          <br />
+          <br />
+          Spirit Cat solves this without trying to sell you anything
+          and without overloading you with pie charts and graphs.
+          <br />
+          What is my balance?
+          <br />
+          How much did I spend so far this month?
+          <br />
+          <br />
+          Take control of your finances with Spirit Cat. -- Sign up today!
+        </p>
+      ) : null}
       {isLoggedIn ? (
         <>
           <h4 className={styles.subtitle}>
-            Welcome back, {userFirstName}! 
+            {welcome_msg}
           </h4>
+          <p className={styles.introPar}>
+            Follow these steps to get started:
+            <ol>
+              <li>
+                Login to your Telegram account and start a chat with 
+                 <strong>@SpiritCat_bot</strong>. After you've initiated the chat, we'll
+                be able to message you there going forward.
+              </li>
+              <li>
+                Click the button below to link a bank account with Plaid (
+                You can link as many accounts as you'd like!)
+              </li>
+              <li>
+                That it! Once you've linked your account, you can start receiving text
+                alerts each day.
+              </li>
+            </ol>
+          Note : This is a proof of concept app, which is fully functional, 
+          but not very configurable yet for the end user. Eventually there
+          will be a more sophisticated user interface to allow you to
+          set your own preferences in terms of what information you'd like
+          to receive each day.
+          </p>
           {/* message if backend is not running and there is no link token */}
           {!backend ? (
             <Callout warning>
