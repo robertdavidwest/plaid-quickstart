@@ -27,6 +27,7 @@ def update_chat_id(db, user_id, chat_id):
 
 
 def attempt_update_chat_id(db, user):
+    error = False
     try:
         telegram_handle = user['telegramHandle']
         user_id = user['id']
@@ -40,6 +41,9 @@ def attempt_update_chat_id(db, user):
         if os.environ['PYTHON_JOBS_DEBUG'] == 'true':
             raise e
         print(f"Error: {e}")
+        error = True
+
+    return error
 
 
 def main():
@@ -48,8 +52,14 @@ def main():
     print(f"Found {len(users)} users with no chat ID")
     if len(users) != 0:
        print("Attempting to update chat IDs") 
+    any_errors = False
     for user in users:
-        attempt_update_chat_id(db, user)
+        error = attempt_update_chat_id(db, user)
+        if error:
+            any_errors = True
+    
+    if any_errors:
+        raise Exception("There were errors updating chat IDs")
 
     db.close()
 

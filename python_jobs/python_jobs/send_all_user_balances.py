@@ -105,9 +105,14 @@ def main():
     api_client = plaid.ApiClient(configuration)
     client = plaid_api.PlaidApi(api_client)
     users = get_all_users(db)
+    any_errors = False
     for user in users:
-        attempt_send_user_balance(db, client, user)
-    
+        error = attempt_send_user_balance(db, client, user)
+        if error:
+            any_errors = True 
+    if any_errors:
+        raise Exception("There were errors sending user balances")
+
     db.close()
 
 
