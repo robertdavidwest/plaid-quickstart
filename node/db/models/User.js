@@ -20,6 +20,15 @@ const User = db.define("user", {
   password: {
     type: Sequelize.STRING,
   },
+  telegramHandle: {
+    type: Sequelize.STRING,
+    unique: true,
+    allowNull: false
+  },
+  telegramChatId: {
+    type: Sequelize.STRING,
+    unique: true,
+  }
 });
 
 module.exports = User;

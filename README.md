@@ -6,7 +6,7 @@ Built from Plaid's [quickstart repo](https://github.com/plaid/quickstart).
 
 You will need a plaid development account to run this app in local development: https://dashboard.plaid.com/signin/
 
-## Local Development 
+## Spirit Cat App - Local Development 
 
 ### 1. Clone the repository
 
@@ -69,7 +69,7 @@ $ ./start.sh
 > The database will automatically be created from the sequelize schema and seeded by `script/seed.js`
  community-supported implementation of the Plaid Quickstart using the [Going.Plaid](https://github.com/viceroypenguin/Going.Plaid) client library can be found at [PlaidQuickstartBlazor](https://github.com/jcoliz/PlaidQuickstartBlazor). Note that Plaid does not provide first-party support for .NET client libraries and that this Quickstart and client library are not created, reviewed, or supported by Plaid. 
 
-#### 2. Running the frontend
+### 5. Running the frontend
 
 ```bash
 $ cd ./frontend
@@ -84,3 +84,35 @@ The frontend which will run on http://localhost:3000.
 In Sandbox, you can log in to any supported institution (except Capital One) using `user_good` as the username and `pass_good` as the password. If prompted to enter a 2-factor authentication code, enter `1234`.
 
 In Production, use real-life credentials.
+
+## Spirit Cat Telegram Bot 
+
+You will need to create a telegram bot, find instructions online. 
+
+Your users must manually opt in by messaging your bot on telegram
+
+Define the env var `TELEGRAM_BOT_TOKEN` in your `.env` 
+
+### Python Jobs `/python_jobs`
+
+#### Local dev
+
+You can create a python virtual environment for local dev, then install 
+the requirements found in `python_jobs/requirements.txt`. 
+Run any of the jobs locally using sandbox plaid data.
+
+#### Scheduling 
+
+You will need to decide for yourself what platform you want to use to deploy
+and schedule these jobs. (Python anywhere has a nice simple free scheduling 
+service)
+
+1. Schedule the job `get_telegram_chat_ids.py` to run at least once a day. 
+   When new users sign up, they will need to manually message your bot in Telegram 
+   (this prevents spam). Once they have done so, this script will pick up the
+   chat id, then going forward you will be able to message the user from
+   the telegram API.
+
+2. Schedule the job `send_all_user_balances.py`. Users will receive balance
+   statements for all linked accounts (if they have messaged your bot and the
+   script in step 1 has been run after.
