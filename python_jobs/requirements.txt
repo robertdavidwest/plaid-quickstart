@@ -1,5 +1,4 @@
 plaid_python==19.0.0
 python-dotenv==0.15.0
 psycopg2==2.9.9
-python-telegram-bot==20.3
 requests==2.31.0
