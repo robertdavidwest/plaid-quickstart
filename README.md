@@ -93,22 +93,26 @@ Your users must manually opt in by messaging your bot on telegram
 
 Define the env var `TELEGRAM_BOT_TOKEN` in your `.env` 
 
-### Python Jobs `python_jobs`
+### Python Jobs `/python_jobs`
 
 #### Local dev
 
-You can create python virtual env and install `python_jobs/requirements` and 
-run any of the jobs locally using sandbox data
+You can create a python virtual environment for local dev, then install 
+the requirements found in `python_jobs/requirements.txt`. 
+Run any of the jobs locally using sandbox plaid data.
 
 #### Scheduling 
 
-You will need to decide for yourself what platform you want to use for
-scheduling
+You will need to decide for yourself what platform you want to use to deploy
+and schedule these jobs. (Python anywhere has a nice simple free scheduling 
+service)
 
-1. Schedule the job `get_telegram_chat_ids.py` to run every day. Whenever a
-   new user signs up, they will need to manually message your bot in Telegram 
+1. Schedule the job `get_telegram_chat_ids.py` to run at least once a day. 
+   When new users sign up, they will need to manually message your bot in Telegram 
    (this prevents spam). Once they have done so, this script will pick up the
-   chat id, then going forward you will be able to message the user
+   chat id, then going forward you will be able to message the user from
+   the telegram API.
 
 2. Schedule the job `send_all_user_balances.py`. Users will receive balance
-   statements for all linked accounts
+   statements for all linked accounts (if they have messaged your bot and the
+   script in step 1 has been run after.
