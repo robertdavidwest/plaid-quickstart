@@ -104,8 +104,9 @@ Run any of the jobs locally using sandbox plaid data.
 #### Scheduling 
 
 You will need to decide for yourself what platform you want to use to deploy
-and schedule these jobs. (Python anywhere has a nice simple free scheduling 
-service)
+and schedule these jobs. ([https://pythonanywhere.com](pythonanywhere.com) has 
+a nice simple free scheduling service, 
+and [https://www.render.com/](render.com/) allows you to create free cron jobs.
 
 1. Schedule the job `get_telegram_chat_ids.py` to run at least once a day. 
    When new users sign up, they will need to manually message your bot in Telegram 
