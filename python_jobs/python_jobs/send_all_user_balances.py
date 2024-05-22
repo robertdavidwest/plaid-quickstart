@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv, find_dotenv
+from datetime import datetime
 
 import plaid
 from plaid.api import plaid_api
@@ -100,9 +101,12 @@ def get_user_accounts(db, client, user_id):
 
 
 def create_message(all_accounts):
+    today = datetime.today()
+    formatted_date = today.strftime("%m/%d/%Y")
+
     messages = [
-            "Account Balances",
-            "----------------------------------"
+            f"Account Balances ({formatted_date})",
+            "------------------------------"
             ]
     for account in all_accounts:
         name = account['institution_name']
@@ -118,9 +122,9 @@ def create_message(all_accounts):
     total = sum([account['balances']['current'] for account in all_accounts])
     messages.append("----------------------------------")
     if total < 0:
-        messages.append("Total Net Balance: -${:,.2f}".format(total))
+        messages.append("Total Net Balance: -${:,.2f}".format(-total))
     else:
-        messages.append("Total Net Balance: ${:,.2f}".format(-total))
+        messages.append("Total Net Balance: ${:,.2f}".format(total))
     return "\n".join(messages)
 
 
