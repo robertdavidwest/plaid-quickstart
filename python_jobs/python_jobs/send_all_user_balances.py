@@ -8,11 +8,14 @@ from plaid.model.item_get_request import ItemGetRequest
 from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdRequest
 from plaid.model.country_code import CountryCode
 
-from institution_short_hands import institution_shorthands
 from lib.postgres import PostgresManager
 from lib.telegram import send_message
 
 load_dotenv(find_dotenv())
+
+institution_shorthands = {
+    "American Express": "Amex",
+}
 
 
 PLAID_ENV = os.environ['PLAID_ENV']
