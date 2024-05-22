@@ -3,8 +3,12 @@ from dotenv import load_dotenv, find_dotenv
 
 import plaid
 from plaid.api import plaid_api
-from plaid.model.accounts_balance_get_request import AccountsBalanceGetRequest
+from plaid.model.transactions_sync_request import TransactionsSyncRequest
+from plaid.model.item_get_request import ItemGetRequest
+from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdRequest
+from plaid.model.country_code import CountryCode
 
+from institution_short_hands import institution_shorthands
 from lib.postgres import PostgresManager
 from lib.telegram import send_message
 
@@ -35,9 +39,29 @@ configuration = plaid.Configuration(
 )
 
 
+def get_item_institution_id(client, access_token):
+    request = ItemGetRequest(access_token=access_token)
+    response = client.item_get(request)
+    institution_id = response['item']['institution_id']
+    return institution_id
+
+
+def get_institution_name(client, access_token):
+    institution_id = get_item_institution_id(client, access_token)
+    request = InstitutionsGetByIdRequest(
+        institution_id=institution_id,
+        country_codes=[CountryCode('US')]
+    )
+    response = client.institutions_get_by_id(request)
+    return response['institution']['name']
+
+
 def accounts_balance_get_request(client, access_token):
-    request = AccountsBalanceGetRequest(access_token=access_token)
-    response = client.accounts_balance_get(request)
+    request = TransactionsSyncRequest(
+        access_token=access_token,
+        cursor='',
+    )
+    response = client.transactions_sync(request).to_dict()
     accounts = response['accounts']
     return accounts
 
@@ -65,21 +89,35 @@ def get_user_accounts(db, client, user_id):
     all_accounts = []
     for token in access_tokens:
         accounts = accounts_balance_get_request(client, token)
+        institution_name = get_institution_name(client, token)
+        for account in accounts:
+            account['institution_name'] = institution_name
         all_accounts.extend(accounts)
     return all_accounts
 
 
 def create_message(all_accounts):
-    messages = []
+    messages = [
+            "Account Balances",
+            "----------------------------------"
+            ]
     for account in all_accounts:
-        name = account['name']
+        name = account['institution_name']
+        name += " " + account['official_name']
         balance = account['balances']['current']
-        msg = "{} Balance: ${:,.2f}".format(name, balance)
+        if account['type'] == 'credit' and balance > 0:
+            msg = "{}: -${:,.2f}".format(name, balance)
+            account['balances']['current'] = -balance
+        else:
+            msg = "{}: ${:,.2f}".format(name, balance)
         messages.append(msg)
 
     total = sum([account['balances']['current'] for account in all_accounts])
-    messages.append("---------")
-    messages.append("Total Net Balance: ${:,.2f}".format(total))
+    messages.append("----------------------------------")
+    if total < 0:
+        messages.append("Total Net Balance: -${:,.2f}".format(total))
+    else:
+        messages.append("Total Net Balance: ${:,.2f}".format(-total))
     return "\n".join(messages)
 
 
@@ -93,6 +131,9 @@ def attempt_send_user_balance(db, client, user):
         
         all_accounts = get_user_accounts(db, client, user_id)
         msg = create_message(all_accounts)
+        for insitution in institution_shorthands:
+            short = institution_shorthands[insitution]
+            msg = msg.replace(insitution, short)
         send_message(chat_id, msg)
     except Exception as e:
         if os.environ['PYTHON_JOBS_DEBUG'] == 'true':
