@@ -50,6 +50,21 @@ class PostgresManager:
         cursor.execute(sql)
         self.connection.commit()
         return cursor.rowcount
+    
+    def insert(self, table, data):
+        cursor = self.connection.cursor()
+        columns = data[0].keys()
+        columns = ['"' + x + '"' for x in columns]
+        column_str = ', '.join(columns)
+        value_str = ', '.join(['%s' for _ in columns])
+        query = f"""
+                    INSERT INTO {table} ({column_str})
+                    VALUES ({value_str})
+                """
+        cursor.executemany(query, [tuple(x.values())
+                                   for x in data])
+        self.connection.commit()
+        return cursor.rowcount
 
     def close(self):
         self.connection.close()

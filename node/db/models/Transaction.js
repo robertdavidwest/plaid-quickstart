@@ -16,7 +16,7 @@ const Transaction = db.define("transaction", {
   },
   merchant_name: {
     type: Sequelize.STRING,
-    allowNull: false
+    allowNull: true
   }
 });
 
