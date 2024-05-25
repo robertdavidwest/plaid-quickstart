@@ -7,6 +7,6 @@ const AccessToken = db.define("access_token", {
     unique: true,
     allowNull: false,
   }
-});
+  });
 
 module.exports = AccessToken;

@@ -6,7 +6,7 @@ const moment = require('moment');
 const util = require('util');
 const { v4: uuidv4 } = require('uuid');
 
-const { models: { AccessToken, Item } } = require("../db");
+const { models: { AccessToken, Item, TransactionCursor } } = require("../db");
 const { routeClosed, requireToken } = require("../gatekeeper");
 
 module.exports = router;
@@ -131,6 +131,10 @@ router.post('/set_access_token', requireToken, function(request, response, next)
       await Item.create({
         accessTokenId: access_token_tbl.id,
         item_id: item_id,
+      });
+  
+      await TransactionCursor.create({
+        accessTokenId: access_token_tbl.id,
       });
 
       response.json({

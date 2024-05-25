@@ -3,7 +3,7 @@
 require('dotenv').config();
 const {
   db,
-  models: { User, AccessToken, Item },
+  models: { User, AccessToken, Item, TransactionCursor},
 } = require("../db");
 
 /**
@@ -37,6 +37,12 @@ async function seed() {
       accessTokenId: access_token.id,
       item_id: process.env.SAMPLE_SANDBOX_ITEM_ID
     })
+
+    await TransactionCursor.create({
+      accessTokenId: access_token.id,
+      cursor: ""
+    })
+
   }
 
   //await Transaction.create({ userId: 1, amount: 100 }); 
