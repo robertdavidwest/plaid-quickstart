@@ -14,6 +14,10 @@ const Account = db.define("account", {
     type: Sequelize.STRING,
     allowNull: false
   },
+  type: {
+    type: Sequelize.STRING,
+    allowNull: false
+  },
 });
 
 module.exports = Account;

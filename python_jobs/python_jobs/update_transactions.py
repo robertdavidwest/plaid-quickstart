@@ -85,7 +85,7 @@ def get_transactions(db, client, access_token,
     has_more = response['has_more']
     cursor = response['next_cursor']
     account_id_map = {}
-    keep_fields = ['account_id', 'name', 'official_name']
+    keep_fields = ['account_id', 'name', 'official_name', 'type']
                    
     for a in response['accounts']:
         a = {k: v for k, v in a.items()  
