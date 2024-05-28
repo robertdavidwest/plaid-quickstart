@@ -110,7 +110,10 @@ def create_message(all_accounts):
             ]
     for account in all_accounts:
         name = account['institution_name']
-        name += " " + account['official_name']
+        if account.get('official_name'):
+            name += " " + account['official_name']
+        else:
+            name += " " + account['name']
         balance = account['balances']['current']
         if account['type'] == 'credit' and balance > 0:
             msg = "{}: -${:,.2f}".format(name, balance)

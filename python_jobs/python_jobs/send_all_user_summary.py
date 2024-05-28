@@ -47,7 +47,11 @@ def get_this_month_transactions(db, access_token):
     df.columns = ['amount', 'name', 'date_et', 'account_type']
 
     # remove credit card payments
-    df = df[~((df['account_type'] == 'credit') & (df['amount'] < 0))]
+    df = df[~(
+        (df['account_type'] == 'credit') & 
+        (df['amount'] < 0)) & 
+        (df['name'].str.lower().str.contains('payment') == False)
+            ]
     df.loc[df['account_type'] == 'credit', 'amount'] = -df['amount']
     return df 
 
