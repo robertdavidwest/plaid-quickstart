@@ -86,19 +86,23 @@ def get_transactions(db, client, access_token,
     cursor = response['next_cursor']
     account_id_map = {}
     keep_fields = ['account_id', 'name', 'official_name', 'type']
-                   
     for a in response['accounts']:
         a = {k: v for k, v in a.items()  
              if k in keep_fields}
         a["createdAt"] = datetime.now()
         a["updatedAt"] = datetime.now()
         a['itemId'] = itemId
+        if not a['official_name']:
+            a['official_name'] = a['name']
         
         accountId = create_account_if_not_exist( db, a)
         account_id_map[a['account_id']] = accountId
     
     clean_transactions = []
     for t in transactions:
+        # Truncate the name to 255 characters
+        t['name'] = t['name'][0:255]
+
         clean_transaction = {
                 "amount": t['amount'],
                 "date": t['date'],
@@ -110,11 +114,7 @@ def get_transactions(db, client, access_token,
                 }
         clean_transactions.append(clean_transaction)
     
-    return clean_transactions, has_more, cursor
-
-
-def get_db_cursor(db, itemId):
-    return '' 
+    return clean_transactions, has_more, cursor 
 
 
 def set_db_cursor(db, cursorId, cursor):
