@@ -36,23 +36,50 @@ def get_this_month_transactions(db, access_token):
         JOIN access_tokens at ON i."accessTokenId" = at.id
 
         WHERE date_et BETWEEN date_trunc('month', current_date )
-                 AND date_trunc('month', current_date) + interval '1 month' - interval '1 day'
-        --WHERE 
-        --   date_et = current_date - interval '1 day'
+               AND date_trunc('month', current_date) + interval '1 month' - interval '1 day'
         AND
           at.access_token = '{access_token}'
     """
     results = db.select(query)
     df = pd.DataFrame(results)
     df.columns = ['amount', 'name', 'date_et', 'account_type']
-
-    # remove credit card payments
-    df = df[~(
+    
+    # remove credit card payments from credit accounts
+    credit_payment_idx = (
         (df['account_type'] == 'credit') & 
-        (df['amount'] < 0)) & 
-        (df['name'].str.lower().str.contains('payment') == False)
-            ]
-    df.loc[df['account_type'] == 'credit', 'amount'] = -df['amount']
+        (df['amount'] < 0) &
+        (df['name'].str.lower().str.contains('payment'))
+    )
+    df = df[~credit_payment_idx]
+    
+    # remove credit card payments from depository accounts
+    depo_payment_idx = (
+        (df['account_type'] == 'depository') & 
+        (df['amount'] > 0) &
+        (df['name'].str.lower().str.contains('payment')) & 
+        (df['name'].str.lower().str.contains('card'))
+    )
+    df = df[~depo_payment_idx]
+
+    # alternative index for credit card payments from depository accounts
+    depo_payment_idx2 = (
+        (df['account_type'] == 'depository') & 
+        (df['amount'] > 0) &
+        (df['name'].str.lower().str.contains('credit')) & 
+        (df['name'].str.lower().str.contains('crd')) &
+        (df['name'].str.lower().str.contains('autopay'))
+    )
+    df = df[~depo_payment_idx2]
+
+    # remove online transfers between accounts
+    online_transfer_idx = (
+        (df['name'].str.lower().str.contains('transfer')) &
+        (df['name'].str.lower().str.contains('online'))
+    )
+    df = df[~online_transfer_idx]
+
+    df['amount'] = - df['amount']
+
     return df 
 
     
@@ -71,33 +98,6 @@ def get_all_account_this_month_transactions(db, user_id):
     df = pd.concat(all, ignore_index=True)
     return df
 
-
-def create_message(all_accounts):
-    today = datetime.today()
-    formatted_date = today.strftime("%m/%d/%Y")
-
-    messages = [
-            f"Account Balances ({formatted_date})",
-            "------------------------------"
-            ]
-    for account in all_accounts:
-        name = account['institution_name']
-        name += " " + account['official_name']
-        balance = account['balances']['current']
-        if account['type'] == 'credit' and balance > 0:
-            msg = "{}: -${:,.2f}".format(name, balance)
-            account['balances']['current'] = -balance
-        else:
-            msg = "{}: ${:,.2f}".format(name, balance)
-        messages.append(msg)
-
-    total = sum([account['balances']['current'] for account in all_accounts])
-    messages.append("----------------------------------")
-    if total < 0:
-        messages.append("Total Net Balance: -${:,.2f}".format(-total))
-    else:
-        messages.append("Total Net Balance: ${:,.2f}".format(total))
-    return "\n".join(messages)
 
 
 def get_totals(df):
@@ -118,6 +118,11 @@ def attempt_send_user_month_summary(db, user):
         all_accounts_df = get_all_account_this_month_transactions(
             db, user_id
         )
+        if len(all_accounts_df) == 0:
+            print(f"user {user_id} has no transactions this month so far, "
+                  "skipping")
+            return
+
         earned, spent, net = get_totals(all_accounts_df)
         month_date = datetime.now().strftime("%B %Y")
         msg = f"Transaction Summary ({month_date})\n"
