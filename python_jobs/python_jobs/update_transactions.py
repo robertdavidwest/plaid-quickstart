@@ -74,8 +74,21 @@ def create_account_if_not_exist(db, account):
         return create_account_if_not_exist(db, account)
 
 
+# def create_account_balance(db, accountId, balances):
+    # balances['accountId'] = accountId
+    # balances['createdAt'] = datetime.now()
+    # balances['updatedAt'] = datetime.now()
+    # keep_fields = ['available', 'current', 'iso_currency_code',
+                   # 'limit', 'unofficial_currency_code',
+                   # 'createdAt', 'updatedAt', 'accountId']
+    # balances = {k: v for k, v in balances.items()
+                # if k in keep_fields}
+    # db.insert('balances', [balances])
+
+
 def get_transactions(db, client, access_token, 
                      itemId, has_more, cursor):
+                     # create_balance=False):
     request = TransactionsSyncRequest(
         access_token=access_token,
         cursor=cursor,
@@ -97,15 +110,29 @@ def get_transactions(db, client, access_token,
         
         accountId = create_account_if_not_exist( db, a)
         account_id_map[a['account_id']] = accountId
+        # if create_balance and 'balances' in a:
+            # balances = a['balances']
+            # create_account_balance(db, accountId,
+                                  # balances) 
+
     
     clean_transactions = []
     for t in transactions:
+        # do not include pending transactions
+        # (it would be nice to included them somewhere else in the future)
+        if t['pending'] == True:
+            print("Skipping pending transaction")
+            continue
         # Truncate the name to 255 characters
         t['name'] = t['name'][0:255]
 
+        date = t['authorized_datetime'] 
+        if not t['authorized_datetime']:
+            date = t['authorized_date']
+
         clean_transaction = {
                 "amount": t['amount'],
-                "date": t['date'],
+                "date": date,
                 "name": t['name'],
                 "merchant_name": t['merchant_name'],
                 "createdAt": datetime.now(),
@@ -114,6 +141,7 @@ def get_transactions(db, client, access_token,
                 }
         clean_transactions.append(clean_transaction)
     
+    # return clean_transactions, has_more, cursor, False
     return clean_transactions, has_more, cursor 
 
 
@@ -134,15 +162,20 @@ def update_transactions(db, client, access_token,
 
     has_more = True
     cursor = transactionCursor
+    # create_balance = True
     while has_more:
+        # transactions, has_more, cursor, create_balance = get_transactions(
         transactions, has_more, cursor = get_transactions(
                 db, client, access_token, itemId,
                 has_more, cursor)
+                # create_balance)
         transactions = [{k: v for k, v in x.items()
                          if k in keep_fields}
                         for x in transactions]
         if transactions:
             write_transactions_to_db(db, transactions)
+        else:
+            print("No transactions to write")
     set_db_cursor(db, cursorId, cursor)    
 
 
