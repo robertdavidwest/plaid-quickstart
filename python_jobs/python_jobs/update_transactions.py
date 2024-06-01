@@ -129,7 +129,11 @@ def get_transactions(db, client, access_token,
         date = t['authorized_datetime'] 
         if not t['authorized_datetime']:
             date = t['authorized_date']
-
+        if not t['authorized_date']:
+            date = t['datetime']
+        if not t['datetime']:
+            date = t['date']
+            
         clean_transaction = {
                 "amount": t['amount'],
                 "date": date,
