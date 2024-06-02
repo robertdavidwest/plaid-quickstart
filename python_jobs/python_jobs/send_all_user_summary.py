@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
 import pandas as pd 
+import numpy as np
 
 from lib.postgres import PostgresManager
 from lib.telegram import send_message
@@ -20,7 +21,14 @@ def get_user_access_tokens(db, user_id):
     return access_tokens
 
 
-def get_this_month_transactions(db, access_token):
+def filter_transactions(df):
+    df = df[
+            df.detailed_category != 'LOAN_PAYMENTS_CREDIT_CARD_PAYMENT'
+    ]
+    return df
+
+
+def get_transactions(db, access_token, start_date, end_date):
     query = f"""
         WITH 
             trans as (
@@ -29,75 +37,70 @@ def get_this_month_transactions(db, access_token):
                     from transactions
             )
 
-        SELECT amount, t.name, date_et, a.type as account_type
+        SELECT amount, t.name, date_et, a.type as account_type,
+            primary_category, detailed_category
         FROM trans t
         JOIN accounts a ON t."accountId" = a.id
         JOIN items i ON a."itemId" = i.id
         JOIN access_tokens at ON i."accessTokenId" = at.id
 
-        WHERE date_et BETWEEN date_trunc('month', current_date )
-               AND date_trunc('month', current_date) + interval '1 month' - interval '1 day'
+        WHERE date_et BETWEEN '{start_date}' AND '{end_date}'
         AND
           at.access_token = '{access_token}'
     """
     results = db.select(query)
     df = pd.DataFrame(results)
-    df.columns = ['amount', 'name', 'date_et', 'account_type']
-    
-    # remove credit card payments from credit accounts
-    credit_payment_idx = (
-        (df['account_type'] == 'credit') & 
-        (df['amount'] < 0) &
-        (df['name'].str.lower().str.contains('payment'))
-    )
-    df = df[~credit_payment_idx]
-    
-    # remove credit card payments from depository accounts
-    depo_payment_idx = (
-        (df['account_type'] == 'depository') & 
-        (df['amount'] > 0) &
-        (df['name'].str.lower().str.contains('payment')) & 
-        (df['name'].str.lower().str.contains('card'))
-    )
-    df = df[~depo_payment_idx]
-
-    # alternative index for credit card payments from depository accounts
-    depo_payment_idx2 = (
-        (df['account_type'] == 'depository') & 
-        (df['amount'] > 0) &
-        (df['name'].str.lower().str.contains('credit')) & 
-        (df['name'].str.lower().str.contains('crd')) &
-        (df['name'].str.lower().str.contains('autopay'))
-    )
-    df = df[~depo_payment_idx2]
-
-    # remove online transfers between accounts
-    online_transfer_idx = (
-        (df['name'].str.lower().str.contains('transfer')) &
-        (df['name'].str.lower().str.contains('online'))
-    )
-    df = df[~online_transfer_idx]
-
+    columns = ['amount', 'name', 'date_et', 'account_type', 
+        'primary_category', 'detailed_category']
+    if len(df) == 0:
+        return pd.DataFrame(columns=columns)
+    df.columns = columns
+    df = filter_transactions(df)
     df['amount'] = - df['amount']
-
     return df 
 
-    
+
 def get_all_users(db):
     query = """SELECT "firstName", "id", "telegramChatId" from users"""
     users = db.select(query)
     return users
 
 
-def get_all_account_this_month_transactions(db, user_id):
+def get_all_account_transactions(db, user_id, start_date, end_date):
     access_tokens = get_user_access_tokens(db, user_id)
     all = [
-        get_this_month_transactions(db, token)
+        get_transactions(db, token, start_date, end_date)
         for token in access_tokens
     ]
     df = pd.concat(all, ignore_index=True)
     return df
 
+
+def category_summary(df):
+    df['label'] = df['name']
+    df['label'] = df['label'].apply(lambda x: 'amazon+food' if
+                                    'amazon' in x.lower() else x)
+    # df['label'] = np.where(df.amount.abs() < 100,
+                           # df['detailed_category'], df['label'])
+    df['label'] = np.where(df.amount.abs() < 100,   
+                           "Items < $100", df['label'])
+    df['label'] = df.label.str[:15]
+    
+    income = df[df.amount > 0 ].groupby(by='label', as_index=False)['amount'].sum()
+    income = income.sort_values(by='amount', ascending=False)
+    percent = income['amount']/income['amount'].sum()
+    income['percent'] = percent.cumsum()
+
+    expense = df[df.amount < 0 ].groupby(by='label', as_index=False)['amount'].sum()
+    expense = expense.sort_values(by='amount', ascending=True)
+    expense['amount'] = - expense['amount']
+    percent = expense['amount']/expense['amount'].sum()
+    expense['percent'] = percent.cumsum()
+    
+    income = income.reset_index(drop=True)
+    expense = expense.reset_index(drop=True)
+
+    return income, expense
 
 
 def get_totals(df):
@@ -107,25 +110,30 @@ def get_totals(df):
     return total_earned, total_spent, net
 
 
-
-def attempt_send_user_month_summary(db, user):
+def attempt_send_user_summary(db, user, add_details,
+                              start_date, end_date,
+                              telegram_api_token):
     try:
         user_id = user['id']
         chat_id = user['telegramChatId']
         if not chat_id:
             print(f"user {user_id} has no chat id, skipping")
             return
-        all_accounts_df = get_all_account_this_month_transactions(
-            db, user_id
+
+
+        all_accounts_df = get_all_account_transactions(
+            db, user_id, start_date, end_date
         )
+
         if len(all_accounts_df) == 0:
             print(f"user {user_id} has no transactions this month so far, "
                   "skipping")
             return
 
         earned, spent, net = get_totals(all_accounts_df)
-        month_date = datetime.now().strftime("%B %Y")
-        msg = f"Transaction Summary ({month_date})\n"
+        date_range_str = f"{start_date} to {end_date}"
+        msg = "Transaction Summary \n"
+        msg += f"({date_range_str})\n"
         len_ = len(msg)
         msg += "-" * len_ + "\n"
         msg += f"Earned this month: ${earned:,.2f}\n"
@@ -138,20 +146,58 @@ def attempt_send_user_month_summary(db, user):
         else:
             msg += f"Net: ${net:,.2f}\n"
         msg += "\n\n"
-        msg += f"As of {datetime.now().strftime('%m/%d/%Y')}"
-        send_message(chat_id, msg)
+
+        if add_details: 
+            income_details, expense_details = category_summary(all_accounts_df)
+
+            msg += "\n\n"
+            msg += "Income Details\n"
+            msg += "-" * len_ + "\n"
+            for i, row in income_details.iterrows():
+                msg += f"{row['label']}: ${row['amount']:,.2f} ({row['percent']:.0%})\n"
+                msg += "\n"
+
+            msg += "\n\n"
+            msg += "Expense Details\n"
+            msg += "-" * len_ + "\n"
+            for i, row in expense_details.iterrows():
+                msg += f"{row['label']}: ${row['amount']:,.2f} ({row['percent']:.0%})\n"
+                msg += "\n"
+
+        send_message(chat_id, msg, telegram_api_token)
     except Exception as e:
         if os.environ['PYTHON_JOBS_DEBUG'] == 'true':
             raise e
         print(f"Error: {e}")
 
 
-def main():
+def get_month_start_end_dates(num_months_ago, full_month):
+    today = datetime.today() 
+    day_num_months_ago = today - pd.DateOffset(months=num_months_ago)
+    start_date = day_num_months_ago.replace(day=1).strftime("%Y-%m-%d")
+    if full_month:
+        end_date = (
+                day_num_months_ago.replace(day=1) +
+                pd.DateOffset(months=1) -
+                pd.DateOffset(days=1)
+                ).strftime("%Y-%m-%d")
+    else:
+        end_date = day_num_months_ago.strftime("%Y-%m-%d")
+    return start_date, end_date
+
+
+def main(telegram_api_token, add_details, num_months_ago, full_month):
+    start_date, end_date = get_month_start_end_dates(num_months_ago,
+                                                     full_month)
+    print(f"Sending user summary for {start_date} to {end_date}")
+    print(f"Adding details: {add_details}")
     db = PostgresManager(os.environ['DATABASE_URL'])
     users = get_all_users(db)
     any_errors = False
     for user in users:
-        error = attempt_send_user_month_summary(db, user)
+        error = attempt_send_user_summary(
+                db, user, add_details,
+                start_date, end_date, telegram_api_token)
         if error:
             any_errors = True 
     if any_errors:
@@ -161,4 +207,11 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    telegram_api_token = os.environ["TELEGRAM_BOT_TOKEN"]
+    add_details = False
+    num_months_ago = 0
+    full_month = False
+    main(telegram_api_token,
+         add_details,
+         num_months_ago,
+         full_month)

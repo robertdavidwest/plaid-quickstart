@@ -28,7 +28,11 @@ const User = db.define("user", {
   telegramChatId: {
     type: Sequelize.STRING,
     unique: true,
-  }
+  },
+  telegramMonthlyChatId: {
+    type: Sequelize.STRING,
+    unique: true,
+  },
 });
 
 module.exports = User;
