@@ -11,8 +11,10 @@ if __name__ == '__main__':
     add_details = True
     num_months_ago = 1
     full_month = True
+    telegramChatidFieldName = "telegramMonthlyChatId"
     main(telegram_api_token,
          add_details,
          num_months_ago,
-         full_month)
+         full_month,
+         telegramChatidFieldName)
 

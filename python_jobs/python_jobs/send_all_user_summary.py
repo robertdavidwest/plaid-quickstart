@@ -61,7 +61,7 @@ def get_transactions(db, access_token, start_date, end_date):
 
 
 def get_all_users(db):
-    query = """SELECT "firstName", "id", "telegramChatId" from users"""
+    query = """SELECT "firstName", "id", "telegramChatId", "telegramMonthlyChatId" from users"""
     users = db.select(query)
     return users
 
@@ -112,10 +112,11 @@ def get_totals(df):
 
 def attempt_send_user_summary(db, user, add_details,
                               start_date, end_date,
-                              telegram_api_token):
+                              telegram_api_token,
+                              telegramChatidFieldName):
     try:
         user_id = user['id']
-        chat_id = user['telegramChatId']
+        chat_id = user[telegramChatidFieldName]
         if not chat_id:
             print(f"user {user_id} has no chat id, skipping")
             return
@@ -186,7 +187,9 @@ def get_month_start_end_dates(num_months_ago, full_month):
     return start_date, end_date
 
 
-def main(telegram_api_token, add_details, num_months_ago, full_month):
+def main(telegram_api_token, add_details,
+         num_months_ago, full_month,
+         telegramChatidFieldName):
     start_date, end_date = get_month_start_end_dates(num_months_ago,
                                                      full_month)
     print(f"Sending user summary for {start_date} to {end_date}")
@@ -197,7 +200,8 @@ def main(telegram_api_token, add_details, num_months_ago, full_month):
     for user in users:
         error = attempt_send_user_summary(
                 db, user, add_details,
-                start_date, end_date, telegram_api_token)
+                start_date, end_date, telegram_api_token,
+                telegramChatidFieldName)
         if error:
             any_errors = True 
     if any_errors:
@@ -211,7 +215,10 @@ if __name__ == '__main__':
     add_details = False
     num_months_ago = 0
     full_month = False
+    telegramChatidFieldName = "telegramChatId"
     main(telegram_api_token,
          add_details,
          num_months_ago,
-         full_month)
+         full_month,
+         telegramChatidFieldName)
+        
