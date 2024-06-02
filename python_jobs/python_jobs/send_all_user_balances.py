@@ -16,6 +16,7 @@ load_dotenv(find_dotenv())
 
 institution_shorthands = {
     "American Express": "Amex",
+    "Charles Schwab": "Schwab"
 }
 
 
@@ -131,7 +132,8 @@ def create_message(all_accounts):
     return "\n".join(messages)
 
 
-def attempt_send_user_balance(db, client, user):
+def attempt_send_user_balance(db, client, user,
+                              telegram_api_token):
     try:
         user_id = user['id']
         chat_id = user['telegramChatId']
@@ -144,7 +146,7 @@ def attempt_send_user_balance(db, client, user):
         for insitution in institution_shorthands:
             short = institution_shorthands[insitution]
             msg = msg.replace(insitution, short)
-        send_message(chat_id, msg)
+        send_message(chat_id, msg, telegram_api_token)
     except Exception as e:
         if os.environ['PYTHON_JOBS_DEBUG'] == 'true':
             raise e
@@ -152,13 +154,15 @@ def attempt_send_user_balance(db, client, user):
 
 
 def main():
+    telegram_api_token = os.environ["TELEGRAM_BOT_TOKEN"]
     db = PostgresManager(os.environ['DATABASE_URL'])
     api_client = plaid.ApiClient(configuration)
     client = plaid_api.PlaidApi(api_client)
     users = get_all_users(db)
     any_errors = False
     for user in users:
-        error = attempt_send_user_balance(db, client, user)
+        error = attempt_send_user_balance(db, client, user,
+                                          telegram_api_token)
         if error:
             any_errors = True 
     if any_errors:

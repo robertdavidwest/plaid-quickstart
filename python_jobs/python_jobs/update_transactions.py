@@ -14,10 +14,6 @@ from lib.telegram import send_message
 
 load_dotenv(find_dotenv())
 
-institution_shorthands = {
-    "American Express": "Amex",
-}
-
 PLAID_ENV = os.environ['PLAID_ENV']
 PLAID_CLIENT_ID = os.environ['PLAID_CLIENT_ID']
 PLAID_SECRET = os.environ['PLAID_SECRET']
@@ -142,6 +138,8 @@ def get_transactions(db, client, access_token,
                 "createdAt": datetime.now(),
                 "updatedAt": datetime.now(),
                 "accountId": account_id_map[t['account_id']],
+                "primary_category": t['personal_finance_category']['primary'],
+                "detailed_category": t['personal_finance_category']['detailed'],
                 }
         clean_transactions.append(clean_transaction)
     
@@ -162,7 +160,8 @@ def update_transactions(db, client, access_token,
     keep_fields = ['amount', 'date',
                    'name', 'merchant_name',
                    'createdAt', 'updatedAt',
-                   'accountId']
+                   'accountId', 'primary_category',
+                   'detailed_category']
 
     has_more = True
     cursor = transactionCursor

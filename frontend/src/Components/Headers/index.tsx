@@ -54,8 +54,15 @@ const Header = () => {
             Follow these steps to get started:
             <ol>
               <li>
-                Login to your Telegram account and start a chat with 
+                To receive daily text alerts, 
+                login to your Telegram account and start a chat with 
                  <strong>@SpiritCat_bot</strong>. After you've initiated the chat, we'll
+                be able to message you there going forward.
+              </li>
+              <li>
+                To receive monthly text alerts, 
+                login to your Telegram account and start a chat with 
+                 <strong>@SpiritCatMonthly_bot</strong>. After you've initiated the chat, we'll
                 be able to message you there going forward.
               </li>
               <li>

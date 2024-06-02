@@ -17,7 +17,15 @@ const Transaction = db.define("transaction", {
   merchant_name: {
     type: Sequelize.STRING,
     allowNull: true
-  }
+  },
+  primary_category: {
+    type: Sequelize.STRING,
+    allowNull: true
+  },
+  detailed_category: {
+    type: Sequelize.STRING,
+    allowNull: true
+  },
 });
 
 module.exports = Transaction;
