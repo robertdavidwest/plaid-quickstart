@@ -93,11 +93,14 @@ def get_user_accounts(db, client, user_id):
     
     all_accounts = []
     for token in access_tokens:
-        accounts = accounts_balance_get_request(client, token)
-        institution_name = get_institution_name(client, token)
-        for account in accounts:
-            account['institution_name'] = institution_name
-        all_accounts.extend(accounts)
+        try:
+            accounts = accounts_balance_get_request(client, token)
+            institution_name = get_institution_name(client, token)
+            for account in accounts:
+                account['institution_name'] = institution_name
+            all_accounts.extend(accounts)
+        except Exception as e:
+            print(f"Error: {e}")
     return all_accounts
 
 
