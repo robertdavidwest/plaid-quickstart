@@ -210,21 +210,22 @@ def get_all_users(db):
 
 def update_all_transactions(db, client, user_id):
     items = get_user_access_tokens(db, user_id)
+    error_happened = False
     for token, transactionCursor, cursorId, itemId in items:
-        update_transactions(db, client, token,
-                            transactionCursor, cursorId, itemId)
+        try:
+            update_transactions(db, client, token,
+                                transactionCursor, cursorId, itemId)
+        except Exception as e:
+            print(f"Error: {e}")
+            error_happened = True
+    return error_happened
 
 
 def attempt_update_all_transactions(db, client, user):
-    try:
         user_id = user['id']
-        update_all_transactions(db, client, user_id)
-
-    except Exception as e:
-        if os.environ['PYTHON_JOBS_DEBUG'] == 'true':
-            raise e
-        print(f"Error: {e}")
-
+        error_happened = update_all_transactions(db, client, user_id)
+        return error_happened
+        
 
 def main():
     db = PostgresManager(os.environ['DATABASE_URL'])
@@ -238,7 +239,7 @@ def main():
         if error:
             any_errors = True 
     if any_errors:
-        raise Exception("There were errors sending user balances")
+        raise Exception("There were errors updating user transactions")
 
     db.close()
 
