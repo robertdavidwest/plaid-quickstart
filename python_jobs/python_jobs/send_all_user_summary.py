@@ -60,6 +60,36 @@ def get_transactions(db, access_token, start_date, end_date):
     return df 
 
 
+def get_pending_transactions(db, access_token):
+    query = f"""
+        WITH 
+            pending as (
+                    select *,
+                    (date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York')::date as date_et
+                    from pending_transactions
+            )
+
+        SELECT amount, p.name, date_et, a.type as account_type,
+            primary_category, detailed_category
+        FROM pending p
+        JOIN accounts a ON p."accountId" = a.id
+        JOIN items i ON a."itemId" = i.id
+        JOIN access_tokens at ON i."accessTokenId" = at.id
+
+        WHERE at.access_token = '{access_token}'
+    """
+    results = db.select(query)
+    df = pd.DataFrame(results)
+    columns = ['amount', 'name', 'date_et', 'account_type', 
+        'primary_category', 'detailed_category']
+    if len(df) == 0:
+        return pd.DataFrame(columns=columns)
+    df.columns = columns
+    df = filter_transactions(df)
+    df['amount'] = - df['amount']
+    return df
+
+
 def get_all_users(db):
     query = """SELECT "firstName", "id", "telegramChatId", "telegramMonthlyChatId" from users"""
     users = db.select(query)
@@ -70,6 +100,16 @@ def get_all_account_transactions(db, user_id, start_date, end_date):
     access_tokens = get_user_access_tokens(db, user_id)
     all = [
         get_transactions(db, token, start_date, end_date)
+        for token in access_tokens
+    ]
+    df = pd.concat(all, ignore_index=True)
+    return df
+
+
+def get_all_account_pending_transactions(db, user_id):
+    access_tokens = get_user_access_tokens(db, user_id)
+    all = [
+        get_pending_transactions(db, token)
         for token in access_tokens
     ]
     df = pd.concat(all, ignore_index=True)
@@ -125,29 +165,51 @@ def attempt_send_user_summary(db, user, add_details,
         all_accounts_df = get_all_account_transactions(
             db, user_id, start_date, end_date
         )
+        
+        pending_df = get_all_account_pending_transactions(db, user_id)
 
-        if len(all_accounts_df) == 0:
+        if len(all_accounts_df) == 0 and len(pending_df) == 0:
             print(f"user {user_id} has no transactions this month so far, "
                   "skipping")
             return
+        
 
-        earned, spent, net = get_totals(all_accounts_df)
         date_range_str = f"{start_date} to {end_date}"
         msg = "Transaction Summary \n"
         msg += f"({date_range_str})\n"
         len_ = len(msg)
         msg += "-" * len_ + "\n"
-        msg += f"Earned this month: ${earned:,.2f}\n"
-        if spent < 0:
-            msg += f"Spent this month: -${-spent:,.2f}\n"
-        else:
-            msg += f"Spent: ${spent:,.2f}\n"
-        if net < 0:
-            msg += f"Net: -${-net:,.2f}\n"
-        else:
-            msg += f"Net: ${net:,.2f}\n"
-        msg += "\n\n"
+        msg += "\n"
 
+        if len(pending_df) > 0:
+            msg += "Pending Transactions:\n"
+            for i, row in pending_df.iterrows():
+                msg += f"{row['name']}: ${row['amount']:,.2f}\n"
+            msg += "\n"
+
+        if len(all_accounts_df) > 0:
+            earned, spent, net = get_totals(all_accounts_df)
+
+            msg += f"Earned this month: ${earned:,.2f}\n"
+            if spent < 0:
+                msg += f"Spent this month: -${-spent:,.2f}\n"
+            else:
+                msg += f"Spent: ${spent:,.2f}\n"
+
+        if len(pending_df) > 0:
+            # total pending
+            total_pending = pending_df['amount'].sum()
+            msg += f"Total Pending: ${total_pending:,.2f}\n"
+            
+            net += total_pending
+        
+        if len(all_accounts_df) > 0:
+            if net < 0:
+                msg += f"Net: -${-net:,.2f}\n"
+            else:
+                msg += f"Net: ${net:,.2f}\n"
+            msg += "\n\n"
+        
         if add_details: 
             income_details, expense_details = category_summary(all_accounts_df)
 
