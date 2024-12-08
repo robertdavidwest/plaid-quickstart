@@ -38,6 +38,12 @@ class PostgresManager:
     def __del__(self):
         self.connection.close()
 
+    def execute(self, sql):
+        cursor = self.connection.cursor()
+        cursor.execute(sql)
+        self.connection.commit()
+        return cursor.rowcount
+
     def select(self, sql):
         cursor = self.connection.cursor(
             cursor_factory=DictCursor
