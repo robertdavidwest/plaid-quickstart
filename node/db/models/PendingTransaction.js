@@ -1,7 +1,7 @@
 const Sequelize = require("sequelize");
 const db = require("../db");
 
-const Transaction = db.define("transaction", {
+const PendingTransaction = db.define("pending_transaction", {
   amount: {
     type: Sequelize.DECIMAL,
     allowNull: false
@@ -32,4 +32,4 @@ const Transaction = db.define("transaction", {
   },
 });
 
-module.exports = Transaction;
+module.exports = PendingTransaction;

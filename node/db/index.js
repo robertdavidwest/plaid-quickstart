@@ -5,6 +5,7 @@ const AccessToken = require("./models/AccessToken");
 const Item = require("./models/Item");
 const Institution = require("./models/Institution");
 const Transaction = require("./models/Transaction");
+const PendingTransaction = require("./models/PendingTransaction");
 const TransactionCursor = require("./models/TransactionCursor");
 const Balance = require("./models/Balance");
 const Account = require("./models/Account");
@@ -15,6 +16,7 @@ AccessToken.hasOne(TransactionCursor);
 Item.hasMany(Institution);
 Item.hasMany(Account);
 Account.hasMany(Transaction);
+Account.hasMany(PendingTransaction);
 Account.hasMany(Balance);
 
 module.exports = {
@@ -25,6 +27,7 @@ module.exports = {
     TransactionCursor,
     Item,
     Institution,
-    Transaction
+    Transaction,
+    PendingTransaction,
   },
 };
