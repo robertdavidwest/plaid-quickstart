@@ -10,7 +10,6 @@ from plaid.model.institutions_get_by_id_request import InstitutionsGetByIdReques
 from plaid.model.country_code import CountryCode
 
 from lib.postgres import PostgresManager
-from lib.telegram import send_message
 
 load_dotenv(find_dotenv())
 
@@ -86,7 +85,7 @@ def make_clean_transaction(t, account_id_map):
     # Truncate the name to 255 characters
     t['name'] = t['name'][0:255]
 
-    date = t['authorized_datetime'] 
+    date = t['authorized_datetime']
     if not t['authorized_datetime']:
         date = t['authorized_date']
     if not t['authorized_date']:
@@ -125,23 +124,23 @@ def get_transactions(db, client, access_token,
     account_id_map = {}
     keep_fields = ['account_id', 'name', 'official_name', 'type']
     for a in response['accounts']:
-        a = {k: v for k, v in a.items()  
+        a = {k: v for k, v in a.items()
              if k in keep_fields}
         a["createdAt"] = datetime.now()
         a["updatedAt"] = datetime.now()
         a['itemId'] = itemId
         if not a['official_name']:
             a['official_name'] = a['name']
-        
-        accountId = create_account_if_not_exist( db, a)
+
+        accountId = create_account_if_not_exist(db, a)
         account_id_map[a['account_id']] = accountId
-    
+
     clean_transactions = []
     pending_transactions = []
     for t in transactions:
         clean_transaction = make_clean_transaction(t, account_id_map)
 
-        if t['pending'] == True:
+        if t['pending']:
             pending_transactions.append(clean_transaction)
         else:
             clean_transactions.append(clean_transaction)
@@ -183,37 +182,66 @@ def update_transactions(db, client, access_token,
             write_transactions_to_db(db, transactions)
         else:
             print("No transactions to write")
-       
-        remove_transaction_ids = [x['transaction_id'] for x in removed]
-        remove_accountsIds = [x['accountId'] for x in removed]
-        if removed:
-            sql = f"""
-                DELETE FROM pending_transactions
-                WHERE "transaction_id" IN ({','.join(remove_transaction_ids)})
-                AND "accountId" IN ({','.join(remove_accountsIds)})
-            """
-            db.execute(sql)
 
+        remove_accountsIds = [str(x['accountId']) for x in removed]
+        if removed:
+            for accountId in set(remove_accountsIds):
+                loop_transaction_ids = [x['transaction_id']
+                                        for x in removed
+                                        if x['accountId'] == accountId]
+
+                sql = f"""
+                    DELETE FROM pending_transactions
+                    WHERE "transaction_id" IN ('{
+                        "', '".join(loop_transaction_ids)}')
+                    AND "accountId" = {accountId}
+                """
+                db.execute(sql)
 
         pending_transactions = [{k: v for k, v in x.items()
-                            if k in keep_fields}
-                        for x in pending_transactions]
+                                if k in keep_fields}
+                                for x in pending_transactions]
         if pending_transactions:
             write_pending_transactions_to_db(db, pending_transactions)
         else:
             print("No pending transactions to write")
 
-    set_db_cursor(db, cursorId, cursor)    
+    set_db_cursor(db, cursorId, cursor)
 
 
 def write_transactions_to_db(db, transactions):
+    # do not insert transactions that already exist
+    transaction_ids = [x['transaction_id'] for x in transactions]
+    query = f"""
+        SELECT transaction_id
+        FROM transactions
+        WHERE transaction_id IN ('{ "', '".join(transaction_ids)}')
+    """
+    existing_transactions = db.select(query)
+    existing_transaction_ids = [x['transaction_id']
+                                for x in existing_transactions]
+    transactions = [x for x in transactions
+                    if x['transaction_id'] not in existing_transaction_ids]
     db.insert('transactions', transactions)
 
 
 def write_pending_transactions_to_db(db, pending_transactions):
+    # do not insert transactions that already exist
+    transaction_ids = [x['transaction_id'] for x in pending_transactions]
+    query = f"""
+        SELECT transaction_id
+        FROM pending_transactions
+        WHERE transaction_id IN ('{ "', '".join(transaction_ids)}')
+    """
+    existing_transactions = db.select(query)
+    existing_transaction_ids = [x['transaction_id']
+                                for x in existing_transactions]
+    pending_transactions = [x for x in pending_transactions
+                            if x['transaction_id'] not in
+                            existing_transaction_ids]
     db.insert('pending_transactions', pending_transactions)
 
-        
+
 def get_user_access_tokens(db, user_id):
     query = f"""
                 SELECT access_token, c.transaction_cursor,
@@ -250,10 +278,10 @@ def update_all_transactions(db, client, user_id):
 
 
 def attempt_update_all_transactions(db, client, user):
-        user_id = user['id']
-        error_happened = update_all_transactions(db, client, user_id)
-        return error_happened
-        
+    user_id = user['id']
+    error_happened = update_all_transactions(db, client, user_id)
+    return error_happened
+
 
 def main():
     db = PostgresManager(os.environ['DATABASE_URL'])
@@ -265,7 +293,7 @@ def main():
         error = attempt_update_all_transactions(
                 db, client, user)
         if error:
-            any_errors = True 
+            any_errors = True
     if any_errors:
         raise Exception("There were errors updating user transactions")
 

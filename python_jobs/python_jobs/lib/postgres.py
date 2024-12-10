@@ -6,14 +6,14 @@ from urllib.parse import urlparse, parse_qs
 def get_psycopg2_conn(database_url):
     # Parse the database URL
     url = urlparse(database_url)
-    
+
     # Extract the components
     dbname = url.path[1:]  # Remove leading '/'
     user = url.username
     password = url.password
     host = url.hostname
     port = url.port
-    
+
     # Connection parameters dictionary
     conn_params = {
         'dbname': dbname,
@@ -22,10 +22,10 @@ def get_psycopg2_conn(database_url):
         'host': host,
         'port': port
     }
-    
+
     # Connect to the database
     conn = psycopg2.connect(**conn_params)
-    
+
     return conn
 
 
