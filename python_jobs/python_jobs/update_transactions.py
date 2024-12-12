@@ -183,7 +183,7 @@ def update_transactions(db, client, access_token,
         else:
             print("No transactions to write")
 
-        remove_accountsIds = [str(x['accountId']) for x in removed]
+        remove_accountsIds = [x['accountId'] for x in removed]
         if removed:
             for accountId in set(remove_accountsIds):
                 loop_transaction_ids = [x['transaction_id']
